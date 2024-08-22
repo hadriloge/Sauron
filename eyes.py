@@ -11,6 +11,8 @@ from collections import deque
 import json
 from concurrent.futures import ThreadPoolExecutor
 
+
+
 class WindowCapture:
     def __init__(self, config_file='config.json'):
         self.load_config(config_file)
@@ -48,6 +50,25 @@ class WindowCapture:
         
         return templates
 
+## SETUP COMPLETE. NOW GET WINDOW INFO
+
+    def get_target_window(self):
+        def enum_windows_callback(hwnd, target_windows):
+            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
+                _, pid = win32process.GetWindowThreadProcessId(hwnd)
+                try:
+                    process = psutil.Process(pid)
+                    if process.name().lower() == self.target_window.lower():
+                        target_windows.append(hwnd)
+                except psutil.NoSuchProcess:
+                    pass
+            return True
+
+        target_windows = []
+        win32gui.EnumWindows(enum_windows_callback, target_windows)
+        
+        return target_windows[0] if target_windows else None
+
     def capture_window(self):
         target_window = self.get_target_window()
         if target_window:
@@ -62,12 +83,14 @@ class WindowCapture:
                 
                 self.screenshot_queue.append(img)
                 self.executor.submit(self.process_screenshot, img, left, top)
+    
+
+## PROCESS SCREENSHOT
 
     def process_screenshot(self, img, window_left, window_top):
         img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
         ## GET PIXEL COLOR STATES HERE AND SAVE FULL IMAGE DATA FOR ROBOT
-
 
         img_gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
         
@@ -148,23 +171,6 @@ class WindowCapture:
             old_file = f'processed/processed_{old_timestamp}.png'
             if os.path.exists(old_file):
                 os.remove(old_file)
-
-    def get_target_window(self):
-        def enum_windows_callback(hwnd, target_windows):
-            if win32gui.IsWindowVisible(hwnd) and win32gui.GetWindowText(hwnd):
-                _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                try:
-                    process = psutil.Process(pid)
-                    if process.name().lower() == self.target_window.lower():
-                        target_windows.append(hwnd)
-                except psutil.NoSuchProcess:
-                    pass
-            return True
-
-        target_windows = []
-        win32gui.EnumWindows(enum_windows_callback, target_windows)
-        
-        return target_windows[0] if target_windows else None
 
     def run(self):
         while True:

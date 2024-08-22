@@ -1,7 +1,7 @@
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from capture_utils import Config, TemplateManager, WindowManager, ScreenshotManager, ImageProcessor, Logger, ImageSaver
+from sauron_capture_utils import Config, TemplateManager, WindowManager, ScreenshotManager, ImageProcessor, Logger, ImageSaver
 
 class WindowCapture:
     def __init__(self, config_file='config.json'):

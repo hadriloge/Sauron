@@ -4,7 +4,7 @@ Made for Windows.
 Use simple cv2 template matching on last 10 screenshots. 
 The only intresting part is having a config file so that you can use this on any window and get the exact screen size real-time, so it will work even when resizing.
 
-This uses psutil to match a target window name to a PID. Which is easily usable for then for info. 
+This uses psutil to match a target window name to a PID. Which is easily usable then for info. 
 
 The other thing that was intresting is the scale in match tempalte. In this case we set a scale of the image (0.2, 1, 20) so that we can detect the object at any size.
 This was especially relevant when trying to automate small UI buttons that can change size based on display device size. 

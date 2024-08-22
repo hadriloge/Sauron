@@ -13,3 +13,4 @@ Absolute screen position: (2990, 610) to (3079, 655)
 Change significance: 0.00%
 --------------------------------------------------
 
+![processed_1724106859 3954706](https://github.com/user-attachments/assets/907acc0f-14b2-4ba4-ada8-fcbf15e0d90c)

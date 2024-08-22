@@ -1,0 +1,7 @@
+numpy
+mss
+opencv-python
+pillow
+psutil
+pywin32
+json

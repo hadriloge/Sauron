@@ -1,0 +1,6 @@
+{
+    "target_window": "chrome.exe",
+    "capture_interval": 2,
+    "template_dir": ".venv/templates",
+    "confidence_threshold": 0.6
+}

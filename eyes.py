@@ -12,16 +12,10 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 
 
-
-class WindowCapture:
+# Load config JSON file
+class Config:
     def __init__(self, config_file='config.json'):
         self.load_config(config_file)
-        self.screenshot_queue = deque(maxlen=10)
-        self.processed_queue = deque(maxlen=10)
-        self.templates = self.load_templates()
-        self.log_file = 'match_log.txt'
-        self.executor = ThreadPoolExecutor(max_workers=4)
-        self.previous_frame = None
 
     def load_config(self, config_file):
         with open(config_file, 'r') as f:
@@ -30,6 +24,12 @@ class WindowCapture:
         self.capture_interval = config.get('capture_interval', 4)
         self.template_dir = config.get('template_dir', '.venv/templates')
         self.confidence_threshold = config.get('confidence_threshold', 0.8)
+
+# Load template images
+class TemplateManager:
+    def __init__(self, template_dir):
+        self.template_dir = template_dir
+        self.templates = self.load_templates()
 
     def load_templates(self):
         if not os.path.exists(self.template_dir):
@@ -50,7 +50,10 @@ class WindowCapture:
         
         return templates
 
-## SETUP COMPLETE. NOW GET WINDOW INFO
+# Get target window and size
+class WindowManager:
+    def __init__(self, target_window):
+        self.target_window = target_window
 
     def get_target_window(self):
         def enum_windows_callback(hwnd, target_windows):
@@ -69,41 +72,42 @@ class WindowCapture:
         
         return target_windows[0] if target_windows else None
 
-    def capture_window(self):
-        target_window = self.get_target_window()
-        if target_window:
-            left, top, right, bottom = win32gui.GetWindowRect(target_window)
-            width, height = right - left, bottom - top
-            print(f"Target window size: {width}x{height}")
+# Screen capture
+class ScreenshotManager:
+    def __init__(self):
+        self.sct = mss()
 
-            with mss() as sct:
-                monitor = {"top": top, "left": left, "width": width, "height": height}
-                screenshot = sct.grab(monitor)
-                img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
-                
-                self.screenshot_queue.append(img)
-                self.executor.submit(self.process_screenshot, img, left, top)
-    
+    def capture_window(self, hwnd):
+        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+        width, height = right - left, bottom - top
+        print(f"Target window size: {width}x{height}")
 
-## PROCESS SCREENSHOT
+        monitor = {"top": top, "left": left, "width": width, "height": height}
+        screenshot = self.sct.grab(monitor)
+        img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)
+        return img, (left, top)
 
-    def process_screenshot(self, img, window_left, window_top):
+# Processing
+class ImageProcessor:
+    def __init__(self, confidence_threshold):
+        self.confidence_threshold = confidence_threshold
+        self.previous_frame = None
+
+    def process_image(self, img, window_position, templates):
         img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-
-        ## GET PIXEL COLOR STATES HERE AND SAVE FULL IMAGE DATA FOR ROBOT
+        ## ADD PIXEL SPECIFIC COLOR DETECTION HERE. 
 
         img_gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
         
         timestamp = time.time()
         log_entries = []
         
-        # Perform template matching
-        for template_name, template in self.templates:
+        for template_name, template in templates:
             match_result = self.match_template(img_gray, template)
             if match_result:
                 startX, startY, endX, endY, scale, confidence = match_result
-                abs_startX, abs_startY = window_left + startX, window_top + startY
-                abs_endX, abs_endY = window_left + endX, window_top + endY
+                abs_startX, abs_startY = window_position[0] + startX, window_position[1] + startY
+                abs_endX, abs_endY = window_position[0] + endX, window_position[1] + endY
                 
                 if confidence >= self.confidence_threshold:
                     cv2.rectangle(img_cv, (startX, startY), (endX, endY), (0, 255, 0), 2)
@@ -119,20 +123,16 @@ class WindowCapture:
             else:
                 log_entries.append(f"No match found for template {template_name}")
         
-        # Perform frame differencing 
         if self.previous_frame is not None:
             frame_diff = cv2.absdiff(self.previous_frame, img_gray)
             _, thresh = cv2.threshold(frame_diff, 30, 255, cv2.THRESH_BINARY)
             
-            # Calculate change significance
             change_percentage = (np.sum(thresh) / 255) / (thresh.shape[0] * thresh.shape[1]) * 100
             log_entries.append(f"Change significance: {change_percentage:.2f}%")
         
         self.previous_frame = img_gray
         
-        self.write_log(timestamp, log_entries)
-        self.processed_queue.append((timestamp, img_cv))
-        self.save_processed_image(timestamp, img_cv)
+        return timestamp, img_cv, log_entries
 
     def match_template(self, img_gray, template):
         h, w = template.shape[:2]
@@ -157,25 +157,61 @@ class WindowCapture:
             return startX, startY, endX, endY, 1/r, maxVal
         return None
 
+## Saving matches, but you can change this to CLI logging if prefered.
+class Logger:
+    def __init__(self, log_file):
+        self.log_file = log_file
+
     def write_log(self, timestamp, log_entries):
         log_content = f"Timestamp: {timestamp}\n" + "\n".join(log_entries) + "\n" + "-" * 50 + "\n"
         with open(self.log_file, 'a') as f:
             f.write(log_content)
 
+## Saving processed images with bounding boxes
+class ImageSaver:
+    def __init__(self, max_saved_images=10):
+        self.max_saved_images = max_saved_images
+        self.processed_queue = deque(maxlen=max_saved_images)
+
     def save_processed_image(self, timestamp, img_cv):
         os.makedirs('processed', exist_ok=True)
         cv2.imwrite(f'processed/processed_{timestamp}.png', img_cv)
         
-        if len(self.processed_queue) == self.processed_queue.maxlen:
-            old_timestamp, _ = self.processed_queue[0]
+        self.processed_queue.append(timestamp)
+        if len(self.processed_queue) == self.max_saved_images:
+            old_timestamp = self.processed_queue[0]
             old_file = f'processed/processed_{old_timestamp}.png'
             if os.path.exists(old_file):
                 os.remove(old_file)
 
+
+## Main class to run the program
+class WindowCapture:
+    def __init__(self, config_file='config.json'):
+        self.config = Config(config_file)
+        self.template_manager = TemplateManager(self.config.template_dir)
+        self.window_manager = WindowManager(self.config.target_window)
+        self.screenshot_manager = ScreenshotManager()
+        self.image_processor = ImageProcessor(self.config.confidence_threshold)
+        self.logger = Logger('match_log.txt')
+        self.image_saver = ImageSaver()
+        self.executor = ThreadPoolExecutor(max_workers=4)
+
+    def capture_and_process(self):
+        target_window = self.window_manager.get_target_window()
+        if target_window:
+            img, window_position = self.screenshot_manager.capture_window(target_window)
+            self.executor.submit(self.process_image, img, window_position)
+
+    def process_image(self, img, window_position):
+        timestamp, processed_img, log_entries = self.image_processor.process_image(img, window_position, self.template_manager.templates)
+        self.logger.write_log(timestamp, log_entries)
+        self.image_saver.save_processed_image(timestamp, processed_img)
+
     def run(self):
         while True:
-            self.capture_window()
-            time.sleep(self.capture_interval)
+            self.capture_and_process()
+            time.sleep(self.config.capture_interval)
 
 if __name__ == '__main__':
     window_capture = WindowCapture()

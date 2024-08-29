@@ -246,3 +246,31 @@ pixel_checks.json
         }
     ]
 }
+-----------------------------------------------
+
+New example log:
+
+Timestamp: 1724938132.027694
+Thirst: White
+
+Hunger: White
+
+Blood: White
+
+Health: White
+
+Conf: 0.2486
+LC: door.jpg Scale: 1.00
+Category: env
+Value: 2
+Pos: (629, 532):(937, 1007)
+Abs: (1104, 532):(1412, 1007)
+
+Conf: 0.3742
+LC: hold.jpg Scale: 1.00
+Category: ui
+Value: 10
+Pos: (744, 804):(838, 911)
+Abs: (1219, 804):(1313, 911)
+
+CS: 2.54%

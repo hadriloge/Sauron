@@ -1,5 +1,5 @@
 You will need to create json files according to what you're trying to achieve:
-
+You might also need to create the processed and screenshots folder. 
 
 -----------------------------------------------
 config.json

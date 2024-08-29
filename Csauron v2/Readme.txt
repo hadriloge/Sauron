@@ -247,7 +247,7 @@ pixel_checks.json
     ]
 }
 -----------------------------------------------
-
+match_log.txt
 New example log: LC for Low confidence and HC for high confidence :) 
 
 Timestamp: 1724938132.027694

@@ -1,6 +1,7 @@
 You will need to create json files according to what you're trying to achieve:
 You might also need to create the processed and screenshots folder. 
 
+The program fetches names from you templates folder and matches them to your metadata file. See bellow examples :)
 -----------------------------------------------
 config.json
 {

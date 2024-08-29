@@ -251,7 +251,8 @@ pixel_checks.json
 -----------------------------------------------
 match_log.txt
 New example log: LC for Low confidence and HC for high confidence :) 
-
+CS is Change significance between two screenshots. 
+-------------
 Timestamp: 1724938132.027694
 Thirst: White
 

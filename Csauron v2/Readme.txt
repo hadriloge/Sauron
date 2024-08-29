@@ -248,7 +248,7 @@ pixel_checks.json
 }
 -----------------------------------------------
 
-New example log:
+New example log: LC for Low confidence and HC for high confidence :) 
 
 Timestamp: 1724938132.027694
 Thirst: White
